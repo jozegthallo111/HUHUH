@@ -8,11 +8,7 @@ ENV PYTHONUNBUFFERED=1
 # Set working directory
 WORKDIR /app
 
-# Install dependencies
-COPY requirements.txt .
-RUN pip install --upgrade pip && pip install -r requirements.txt
-
-# Install Chrome & Chromedriver
+# Install system dependencies first
 RUN apt-get update && apt-get install -y \
     wget \
     unzip \
@@ -51,11 +47,19 @@ RUN CHROME_VERSION=$(google-chrome-stable --version | grep -oP '\d+\.\d+\.\d+') 
     chmod +x /usr/local/bin/chromedriver && \
     rm /tmp/chromedriver.zip
 
-# Copy the scraper
-COPY scraper.py .
+# Copy requirements first (for better layer caching)
+COPY requirements.txt .
 
-# Set chromedriver path in script if needed
+# Install Python dependencies
+RUN pip install --upgrade pip && \
+    pip install -r requirements.txt
+
+# Copy the scraper code
+COPY scraper/ ./scraper/
+
+# Set chromedriver path
 ENV CHROMEDRIVER_PATH=/usr/local/bin/chromedriver
+ENV PYTHONPATH=/app
 
 # Run the scraper
-CMD ["python", "scraper.py"]
+CMD ["python", "scraper/scraper.py"]
